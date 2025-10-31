@@ -1,138 +1,3 @@
-# Complete Guide: Building Patroni with GitHub Actions
-
-## Overview
-
-Since there's no official Patroni Docker image, this guide shows you how to build and maintain your own using GitHub Actions and GitHub Container Registry (GHCR).
-
----
-
-## Step 1: Create GitHub Repository
-
-1. Go to https://github.com/new
-2. Name it something like `patroni-docker`
-3. Make it **Public** (for free GHCR hosting) or Private (still works, just different visibility)
-4. Check "Add a README file"
-5. Click "Create repository"
-
----
-
-## Step 2: Create Repository Structure
-
-Clone your repo locally:
-```bash
-git clone https://github.com/YOUR_USERNAME/patroni-docker.git
-cd patroni-docker
-```
-
-Create the following file structure:
-```
-patroni-docker/
-├── .github/
-│   └── workflows/
-│       └── build.yml
-├── Dockerfile
-└── README.md
-```
-
----
-
-## Step 3: Create the Dockerfile
-
-Create `Dockerfile` with this content:
-
-```dockerfile
-FROM postgres:16-alpine
-
-# Install Python and Patroni dependencies
-RUN apk add --no-cache \
-    python3 \
-    py3-pip \
-    py3-psycopg2 \
-    py3-yaml \
-    && pip3 install --no-cache-dir --break-system-packages \
-    patroni[etcd3]==3.3.2 \
-    && mkdir -p /etc/patroni
-
-# Expose PostgreSQL and Patroni API ports
-EXPOSE 5432 8008
-
-# Run as postgres user
-USER postgres
-
-# Start Patroni
-CMD ["patroni", "/etc/patroni/patroni.yml"]
-```
-
----
-
-## Step 4: Create GitHub Actions Workflow
-
-Create `.github/workflows/build.yml`:
-
-```yaml
-name: Build and Push Patroni Image
-
-on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'Dockerfile'
-      - '.github/workflows/build.yml'
-  schedule:
-    # Rebuild every Sunday at midnight UTC (gets latest security patches)
-    - cron: '0 0 * * 0'
-  workflow_dispatch:  # Allows manual triggering from GitHub UI
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=raw,value=latest
-            type=sha,prefix={{branch}}-
-            type=ref,event=branch
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-```
-
----
-
-## Step 5: Create README.md
-
-Create `README.md` with this content:
-
-```markdown
 # Patroni Docker Image
 
 A production-ready Docker image for [Patroni](https://github.com/patroni/patroni) - a template for PostgreSQL High Availability with automatic failover.
@@ -323,23 +188,13 @@ services:
 
 ### Tags Available
 
-- `latest` - Latest build from main branch (recommended for production with version pinning)
+- `latest` - Latest build from main branch
 - `main-<sha>` - Specific commit SHA
 - `main` - Latest from main branch
 
 **Production Recommendation**: Pin to a specific SHA tag for reproducibility:
 ```yaml
 image: ghcr.io/YOUR_USERNAME/patroni-docker:main-abc1234
-```
-
-## Building Locally
-
-If you want to customize the image:
-
-```bash
-git clone https://github.com/YOUR_USERNAME/patroni-docker.git
-cd patroni-docker
-docker build -t patroni:custom .
 ```
 
 ## Updates
@@ -360,13 +215,13 @@ docker-compose up -d
 - Base Image: `postgres:16-alpine`
 - Patroni Version: `3.3.2`
 - Python Version: `3.x` (from Alpine)
-- DCS Support: etcd3 (etcd2, Consul, and ZooKeeper can be added)
+- DCS Support: etcd3
 
 ## Customization
 
 ### Different PostgreSQL Version
 
-Edit `Dockerfile` and change:
+Fork this repo, edit `Dockerfile` and change:
 ```dockerfile
 FROM postgres:15-alpine  # or postgres:14-alpine, etc.
 ```
@@ -388,6 +243,16 @@ RUN apk add --no-cache \
 Edit `Dockerfile`:
 ```dockerfile
 patroni[etcd3]==3.2.0  # Change version
+```
+
+## Building Locally
+
+If you want to build the image yourself:
+
+```bash
+git clone https://github.com/YOUR_USERNAME/patroni-docker.git
+cd patroni-docker
+docker build -t patroni:custom .
 ```
 
 ## Troubleshooting
@@ -443,233 +308,3 @@ For issues with:
 - **This Docker image**: Open an issue in this repository
 - **Patroni itself**: Visit [Patroni GitHub](https://github.com/patroni/patroni)
 - **PostgreSQL**: Visit [PostgreSQL Community](https://www.postgresql.org/community/)
-```
-
-**Don't forget to replace** `YOUR_USERNAME` with your actual GitHub username throughout the README!
-
----
-
-## Step 6: Commit and Push
-
-```bash
-git add .
-git commit -m "Add Patroni Docker image with GitHub Actions"
-git push origin main
-```
-
----
-
-## Step 7: Watch the Build
-
-1. Go to your GitHub repo
-2. Click the **"Actions"** tab
-3. You should see your workflow running
-4. Click on it to watch the build progress
-5. Wait ~2-5 minutes for it to complete
-
----
-
-## Step 8: Verify the Image
-
-Once the build completes:
-
-1. Go to your repo's main page
-2. Look for **"Packages"** in the right sidebar
-3. Click on your `patroni-docker` package
-4. You'll see the image URL: `ghcr.io/YOUR_USERNAME/patroni-docker:latest`
-
----
-
-## Step 9: Make Image Public (if repo is public)
-
-By default, GHCR packages inherit repo visibility, but double-check:
-
-1. Click on your package
-2. Click **"Package settings"** (bottom right)
-3. Scroll to **"Danger Zone"**
-4. Click **"Change visibility"**
-5. Select **"Public"**
-6. Confirm
-
----
-
-## Step 10: Update Your docker-compose.yml
-
-Replace your current patroni image with:
-
-```yaml
-services:
-  patroni:
-    image: ghcr.io/YOUR_USERNAME/patroni-docker:latest
-    container_name: patroni-${NODE_NAME:-server}
-    hostname: ${NODE_NAME:-server}
-    networks:
-      - patroni-net
-    ports:
-      - "${WIREGUARD_IP}:${POSTGRES_PORT}:5432"
-      - "${WIREGUARD_IP}:${PATRONI_API_PORT}:8008"
-    environment:
-      # Cluster configuration
-      PATRONI_SCOPE: ${CLUSTER_NAME}
-      PATRONI_NAME: ${NODE_NAME}
-      # etcd configuration
-      PATRONI_ETCD3_HOSTS: ${ETCD_HOST}:${ETCD_PORT}
-      # REST API
-      PATRONI_RESTAPI_LISTEN: 0.0.0.0:8008
-      PATRONI_RESTAPI_CONNECT_ADDRESS: ${WIREGUARD_IP}:${PATRONI_API_PORT}
-      # PostgreSQL configuration
-      PATRONI_POSTGRESQL_LISTEN: 0.0.0.0:5432
-      PATRONI_POSTGRESQL_CONNECT_ADDRESS: ${WIREGUARD_IP}:${POSTGRES_PORT}
-      PATRONI_POSTGRESQL_DATA_DIR: ${PGDATA}
-      # Authentication
-      PATRONI_SUPERUSER_USERNAME: postgres
-      PATRONI_SUPERUSER_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD}
-      PATRONI_REPLICATION_USERNAME: replicator
-      PATRONI_REPLICATION_PASSWORD: ${REPLICATION_PASSWORD}
-      # PostgreSQL parameters
-      PATRONI_POSTGRESQL_PARAMETERS_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-100}
-      PATRONI_POSTGRESQL_PARAMETERS_SHARED_BUFFERS: ${POSTGRES_SHARED_BUFFERS:-1GB}
-      PATRONI_POSTGRESQL_PARAMETERS_EFFECTIVE_CACHE_SIZE: ${POSTGRES_EFFECTIVE_CACHE_SIZE:-3GB}
-      PATRONI_POSTGRESQL_PARAMETERS_MAINTENANCE_WORK_MEM: 256MB
-      PATRONI_POSTGRESQL_PARAMETERS_CHECKPOINT_COMPLETION_TARGET: 0.9
-      PATRONI_POSTGRESQL_PARAMETERS_WAL_BUFFERS: 16MB
-      PATRONI_POSTGRESQL_PARAMETERS_DEFAULT_STATISTICS_TARGET: 100
-      PATRONI_POSTGRESQL_PARAMETERS_RANDOM_PAGE_COST: 1.1
-      PATRONI_POSTGRESQL_PARAMETERS_EFFECTIVE_IO_CONCURRENCY: 200
-      PATRONI_POSTGRESQL_PARAMETERS_WORK_MEM: 10MB
-      PATRONI_POSTGRESQL_PARAMETERS_MIN_WAL_SIZE: 1GB
-      PATRONI_POSTGRESQL_PARAMETERS_MAX_WAL_SIZE: 4GB
-      # Replication settings
-      PATRONI_POSTGRESQL_PARAMETERS_WAL_LEVEL: replica
-      PATRONI_POSTGRESQL_PARAMETERS_HOT_STANDBY: "on"
-      PATRONI_POSTGRESQL_PARAMETERS_MAX_WAL_SENDERS: 10
-      PATRONI_POSTGRESQL_PARAMETERS_MAX_REPLICATION_SLOTS: 10
-      PATRONI_POSTGRESQL_PARAMETERS_HOT_STANDBY_FEEDBACK: "on"
-      # Logging
-      PATRONI_POSTGRESQL_PARAMETERS_LOG_DESTINATION: stderr
-      PATRONI_POSTGRESQL_PARAMETERS_LOGGING_COLLECTOR: "off"
-      PATRONI_POSTGRESQL_PARAMETERS_LOG_STATEMENT: ${POSTGRES_LOG_STATEMENT:-none}
-      PATRONI_POSTGRESQL_PARAMETERS_LOG_DURATION: "off"
-      # Bootstrap configuration
-      PATRONI_BOOTSTRAP_METHOD: ${BOOTSTRAP_METHOD:-auto}
-      # Log level
-      PATRONI_LOG_LEVEL: ${LOG_LEVEL:-INFO}
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-      - ./configs/patroni.yml:/etc/patroni/patroni.yml:ro
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "patronictl list || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-
-volumes:
-  postgres-data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${POSTGRES_DATA_PATH:-./data}
-
-networks:
-  patroni-net:
-    driver: bridge
-```
-
----
-
-## Step 11: Pull and Run on Your Server
-
-```bash
-# On your server
-docker pull ghcr.io/YOUR_USERNAME/patroni-docker:latest
-docker-compose up -d
-```
-
----
-
-## Optional: Authentication for Private Images
-
-If your repo/package is private, authenticate on your server:
-
-```bash
-# Create a Personal Access Token (PAT)
-# Go to: GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
-# Create token with 'read:packages' scope
-
-# Login on your server
-echo "YOUR_PAT" | docker login ghcr.io -u YOUR_USERNAME --password-stdin
-```
-
----
-
-## Updating the Image
-
-Whenever you want to update:
-
-1. **Edit the Dockerfile** locally
-2. **Commit and push**:
-   ```bash
-   git add Dockerfile
-   git commit -m "Update Patroni version"
-   git push
-   ```
-3. **GitHub Actions builds automatically**
-4. **Pull on your servers**:
-   ```bash
-   docker pull ghcr.io/YOUR_USERNAME/patroni-docker:latest
-   docker-compose up -d
-   ```
-
-Or trigger a manual rebuild:
-- Go to Actions tab → Click your workflow → Click "Run workflow"
-
----
-
-## Troubleshooting
-
-### Build fails with permission error
-- Go to repo Settings → Actions → General → Workflow permissions
-- Select "Read and write permissions"
-- Save
-
-### Can't pull image on server
-- Make sure package is public OR you're logged in with a PAT
-- Check the exact image URL in the Packages section
-
-### Want different PostgreSQL version
-- Change `FROM postgres:16-alpine` to `FROM postgres:15-alpine` (or any version)
-- Commit and push
-
----
-
-## Why GitHub Actions + GHCR?
-
-**Advantages:**
-- ✅ Free hosting (public images)
-- ✅ Automated rebuilds when you push changes
-- ✅ Version control for your Dockerfile
-- ✅ Can make images private if needed
-- ✅ No manual builds on servers
-- ✅ Easy to update all servers at once
-- ✅ Weekly automatic rebuilds for security patches
-
-**Alternatives considered:**
-- Building on server during installation (manual, not reproducible)
-- Docker Hub (similar but requires separate account)
-- Pre-built image distribution (harder to update)
-
----
-
-## Summary
-
-1. Create GitHub repo
-2. Add Dockerfile, workflow, and README
-3. Push to GitHub
-4. Wait for automatic build
-5. Use image in your docker-compose
-6. Updates happen automatically or on-demand
-
-Your image will be available at: `ghcr.io/YOUR_USERNAME/patroni-docker:latest`
