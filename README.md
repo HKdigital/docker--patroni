@@ -233,7 +233,7 @@ Edit `Dockerfile`:
 RUN apk add --no-cache \
     python3 \
     py3-pip \
-    py3-psycopg2 \
+    py3-psycopg2c \
     postgresql-contrib \
     # Add more packages here
 ```
