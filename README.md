@@ -7,7 +7,7 @@ Since there's no official Patroni Docker image, this repository provides an auto
 ## Quick Start
 
 ```bash
-docker pull ghcr.io/HKdigital/patroni-docker:latest
+docker pull ghcr.io/HKdigital/docker--patroni:latest
 ```
 
 ## What's Included
@@ -31,7 +31,7 @@ docker run -d \
   -e PATRONI_ETCD3_HOSTS=etcd:2379 \
   -v /path/to/patroni.yml:/etc/patroni/patroni.yml:ro \
   -v postgres-data:/var/lib/postgresql/data \
-  ghcr.io/HKdigital/patroni-docker:latest
+  ghcr.io/HKdigital/docker--patroni:latest
 ```
 
 ### Docker Compose
@@ -41,7 +41,7 @@ version: '3.8'
 
 services:
   patroni:
-    image: ghcr.io/HKdigital/patroni-docker:latest
+    image: ghcr.io/HKdigital/docker--patroni:latest
     container_name: patroni-node1
     hostname: node1
     ports:
@@ -163,21 +163,21 @@ version: '3.8'
 
 services:
   patroni1:
-    image: ghcr.io/HKdigital/patroni-docker:latest
+    image: ghcr.io/HKdigital/docker--patroni:latest
     environment:
       PATRONI_SCOPE: my-cluster
       PATRONI_NAME: node1
       # ... other config
 
   patroni2:
-    image: ghcr.io/HKdigital/patroni-docker:latest
+    image: ghcr.io/HKdigital/docker--patroni:latest
     environment:
       PATRONI_SCOPE: my-cluster
       PATRONI_NAME: node2
       # ... other config
 
   patroni3:
-    image: ghcr.io/HKdigital/patroni-docker:latest
+    image: ghcr.io/HKdigital/docker--patroni:latest
     environment:
       PATRONI_SCOPE: my-cluster
       PATRONI_NAME: node3
@@ -194,7 +194,7 @@ services:
 
 **Production Recommendation**: Pin to a specific SHA tag for reproducibility:
 ```yaml
-image: ghcr.io/HKdigital/patroni-docker:main-abc1234
+image: ghcr.io/HKdigital/docker--patroni:main-abc1234
 ```
 
 ## Updates
@@ -206,7 +206,7 @@ This image is automatically rebuilt:
 
 To update your deployment:
 ```bash
-docker pull ghcr.io/HKdigital/patroni-docker:latest
+docker pull ghcr.io/HKdigital/docker--patroni:latest
 docker-compose up -d
 ```
 
@@ -250,8 +250,8 @@ patroni[etcd3]==3.2.0  # Change version
 If you want to build the image yourself:
 
 ```bash
-git clone https://github.com/HKdigital/patroni-docker.git
-cd patroni-docker
+git clone https://github.com/HKdigital/docker--patroni.git
+cd docker--patroni
 docker build -t patroni:custom .
 ```
 
