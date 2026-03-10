@@ -2,7 +2,7 @@
 
 A production-ready Docker image for [Patroni](https://github.com/patroni/patroni) - a template for PostgreSQL High Availability with automatic failover.
 
-Since there's no official Patroni Docker image, this repository provides an automated build using GitHub Actions and GitHub Container Registry.
+Since there's no official Patroni Docker image, this repository provides an automated build using GitHub Actions and GitHub Container Registry. Includes PostGIS extension for spatial data support.
 
 ## Quick Start
 
@@ -12,7 +12,7 @@ docker pull ghcr.io/HKdigital/docker--patroni:latest
 
 ## What's Included
 
-- **PostgreSQL 16** (Alpine-based for smaller image size)
+- **PostgreSQL 16 with PostGIS 3.4** (Alpine-based for smaller image size)
 - **Patroni 3.3.2** with etcd3 support
 - **Python 3** and required dependencies
 - Optimized for production use
@@ -212,18 +212,20 @@ docker-compose up -d
 
 ## Version Information
 
-- Base Image: `postgres:16-alpine`
+- Base Image: `postgis/postgis:16-3.4-alpine`
+- PostgreSQL Version: `16`
+- PostGIS Version: `3.4`
 - Patroni Version: `3.3.2`
 - Python Version: `3.x` (from Alpine)
 - DCS Support: etcd3
 
 ## Customization
 
-### Different PostgreSQL Version
+### Different PostgreSQL/PostGIS Version
 
 Fork this repo, edit `Dockerfile` and change:
 ```dockerfile
-FROM postgres:15-alpine  # or postgres:14-alpine, etc.
+FROM postgis/postgis:15-3.3-alpine  # or other versions from hub.docker.com/r/postgis/postgis
 ```
 
 ### Add Additional Extensions

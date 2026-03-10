@@ -1,4 +1,4 @@
-FROM postgres:16-alpine
+FROM postgis/postgis:16-3.4-alpine
 
 # Install Python and build dependencies
 RUN apk add --no-cache \
